@@ -30,14 +30,14 @@ using Akkatecture.Sagas.AggregateSaga;
 
 namespace Akkatecture.Clustering.Core
 {
-    public class ShardIdentityExtractors
+    public static class ShardIdentityExtractors
     {
         public static  Tuple<string, object> AggregateIdentityExtractor<TAggregate,TIdentity>(object message)
             where TIdentity : IIdentity
             where TAggregate : IAggregateRoot<TIdentity>
         {
             if(message is null)
-                throw new ArgumentNullException();
+                throw new ArgumentNullException(nameof(message));
             
             if (message is ICommand<TAggregate, TIdentity> command)
                 return new Tuple<string, object>(command.AggregateId.Value, message);
@@ -52,7 +52,7 @@ namespace Akkatecture.Clustering.Core
             where TSagaLocator : ISagaLocator<TIdentity>
         {
             if (message is null)
-                throw new ArgumentNullException();
+                throw new ArgumentNullException(nameof(message));
 
             var sagaLocator = (TSagaLocator)Activator.CreateInstance(typeof(TSagaLocator));
 

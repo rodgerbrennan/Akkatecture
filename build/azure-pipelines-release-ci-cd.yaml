@@ -1,0 +1,74 @@
+# Akkatecture Release CI CD pipeline definition
+# This definition is responsible for building and testing
+# the project in the master branch. It pushes package
+# artefacts to a public nuget feed as production packages.
+
+trigger: none
+
+pr: none
+
+variables:
+  majorVersion: '0'
+  minorVersion: '4'
+  patchVersion: '5'
+
+name: ${{ format('{0}.{1}.{2}', variables.majorVersion, variables.minorVersion, variables.patchVersion) }}
+
+jobs:
+  - job: Build
+    pool:
+      vmImage: 'Ubuntu 16.04'
+    variables:
+      buildConfiguration: 'Release'
+
+    steps:
+    - task: DotNetCoreCLI@2
+      displayName: 'Restore [Akkatecture]'
+      inputs:
+        command: 'restore'
+        projects: 'Akkatecture.sln'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Build [Akkatecture]'
+      inputs:
+        command: 'build'
+        projects: 'Akkatecture.sln'
+        arguments: '/p:Version=$(Build.BuildNumber) --configuration $(BuildConfiguration)'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Test [Akkatecture.Tests]'
+      inputs:
+        command: 'test'
+        configuration: $(BuildConfiguration)
+        projects: 'test/Akkatecture.Tests/Akkatecture.Tests.csproj'
+        publishTestResults: true
+
+    - task: NuGetCommand@2
+      displayName: 'Push [Akkatecture]'
+      inputs:
+        command: push
+        packagesToPush: 'src/Akkatecture/bin/$(BuildConfiguration)/*.nupkg'
+        nuGetFeedType: external
+        publishFeedCredentials: 'Akkatecture-NuGet'
+
+    - task: NuGetCommand@2
+      displayName: 'Push [Akkatecture.TestFixture]'
+      inputs:
+        command: push
+        packagesToPush: 'src/Akkatecture.TestFixture/bin/$(BuildConfiguration)/*.nupkg'
+        nuGetFeedType: external
+        publishFeedCredentials: 'Akkatecture-NuGet'
+
+    - task: NuGetCommand@2
+      displayName: 'Push [Akkatecture.Clustering]'
+      inputs:
+        command: push
+        packagesToPush: 'src/Akkatecture.Clustering/bin/$(BuildConfiguration)/*.nupkg'
+        nuGetFeedType: external
+        publishFeedCredentials: 'Akkatecture-NuGet'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact Source'
+      inputs:
+        PathtoPublish: '$(Agent.BuildDirectory)'
+        ArtifactName: Source

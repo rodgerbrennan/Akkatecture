@@ -22,9 +22,15 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using System;
+using Akkatecture.Aggregates;
 using Akkatecture.Clustering.Core;
+using Akkatecture.Commands;
 using Akkatecture.TestHelpers.Aggregates;
 using Akkatecture.TestHelpers.Aggregates.Commands;
+using Akkatecture.TestHelpers.Aggregates.Entities;
+using Akkatecture.TestHelpers.Aggregates.Events;
+using Akkatecture.TestHelpers.Aggregates.Sagas;
+using Akkatecture.TestHelpers.Aggregates.Sagas.Test;
 using FluentAssertions;
 using Xunit;
 
@@ -36,7 +42,8 @@ namespace Akkatecture.Tests.UnitTests.Clustering.Sharding
         public void AggregateIdentityExtractor_ValidMessage_ExtractsIdentity()
         {
             var aggregateId = TestAggregateId.New;
-            var message = new CreateTestCommand(aggregateId);
+            var commandId = CommandId.New;
+            var message = new CreateTestCommand(aggregateId, commandId);
 
             var extractedIdentity =
                 ShardIdentityExtractors.AggregateIdentityExtractor<TestAggregate, TestAggregateId>(message).Item1;
@@ -48,7 +55,8 @@ namespace Akkatecture.Tests.UnitTests.Clustering.Sharding
         public void AggregateIdentityExtractor_ValidObject_ExtractsObject()
         {
             var aggregateId = TestAggregateId.New;
-            var message = new CreateTestCommand(aggregateId);
+            var commandId = CommandId.New;
+            var message = new CreateTestCommand(aggregateId, commandId);
 
             var extractedObject = ShardIdentityExtractors.AggregateIdentityExtractor<TestAggregate, TestAggregateId>(message).Item2;
 
@@ -80,13 +88,48 @@ namespace Akkatecture.Tests.UnitTests.Clustering.Sharding
         public void AggregateSagaIdentityExtractor_ValidMessage_ExtractsIdentity()
         {
             var aggregateId = TestAggregateId.New;
-            var message = new CreateTestCommand(aggregateId);
+            var receiverId = TestAggregateId.New;
+            var testId = TestId.New;
+            var test = new Test(testId);
+            var now = DateTimeOffset.UtcNow;
+            var aggregateSequenceNumber = 3;
+            var domainEvent =
+                new DomainEvent<TestAggregate, TestAggregateId, TestSentEvent>(
+                    aggregateId,
+                    new TestSentEvent(test, receiverId),
+                    new Metadata(),
+                    now,
+                    aggregateSequenceNumber);
 
             var extractedIdentity =
-                ShardIdentityExtractors.AggregateIdentityExtractor<TestAggregate, TestAggregateId>(message).Item1;
+                ShardIdentityExtractors.AggregateSagaIdentityExtractor<TestSagaManager,TestSaga,TestSagaId, TestSagaLocator>(domainEvent);
 
-            extractedIdentity.Should().BeEquivalentTo(message.AggregateId.Value);
+            extractedIdentity.Item1.Should().Contain(test.Id.Value);
+            extractedIdentity.Item2
+                .As<DomainEvent<TestAggregate, TestAggregateId, TestSentEvent>>().AggregateEvent.Test
+                .Should().Be(test);
         }
+        
+        [Fact]
+        public void AggregateSagaIdentityExtractor_InValidMessage_ExceptionIsThrown()
+        {
+            var aggregateId = TestAggregateId.New;
+            var commandId = CommandId.New;
+            var message = new CreateTestCommand(aggregateId, commandId);
+
+            this.Invoking(test => ShardIdentityExtractors.AggregateSagaIdentityExtractor<TestSagaManager,TestSaga,TestSagaId, TestSagaLocator>(message))
+                .Should().Throw<ArgumentException>();
+        }
+        
+        [Fact]
+        public void AggregateSagaIdentityExtractor_NullMessage_ExceptionIsThrown()
+        {
+
+            this.Invoking(test => ShardIdentityExtractors.AggregateSagaIdentityExtractor<TestSagaManager,TestSaga,TestSagaId, TestSagaLocator>(null))
+                .Should().Throw<ArgumentNullException>();
+        }
+        
+        
     }
     
 }

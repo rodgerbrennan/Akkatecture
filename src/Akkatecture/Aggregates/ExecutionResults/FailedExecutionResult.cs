@@ -33,7 +33,7 @@ namespace Akkatecture.Aggregates.ExecutionResults
     public class FailedExecutionResult : ExecutionResult
     {
         public IReadOnlyCollection<string> Errors { get; }
-
+        
         public FailedExecutionResult(
             IEnumerable<string> errors)
         {

@@ -45,55 +45,14 @@ namespace Akkatecture.Aggregates
         where TAggregate : IAggregateRoot<TIdentity>
         where TIdentity : IIdentity
     {
-        private static readonly IReadOnlyDictionary<Type, Action<TMessageApplier, IAggregateEvent>> ApplyMethods;
-        private static readonly IReadOnlyDictionary<Type, Action<TMessageApplier, IAggregateSnapshot>> HydrateMethods;
-
-        static AggregateState()
-        {
-            ApplyMethods = typeof(TMessageApplier).GetAggregateEventApplyMethods<TAggregate, TIdentity, TMessageApplier>();
-            HydrateMethods = typeof(TMessageApplier).GetAggregateSnapshotHydrateMethods<TAggregate, TIdentity, TMessageApplier>();
-        }
-
         protected AggregateState()
         {
             var me = this as TMessageApplier;
+            
             if (me == null)
-            {
-                throw new InvalidOperationException(
-                    $"Event applier of type '{GetType().PrettyPrint()}' has a wrong generic argument '{typeof(TMessageApplier).PrettyPrint()}'");
-            }
+                throw new InvalidOperationException($"Event applier of type '{GetType().PrettyPrint()}' has a wrong generic argument '{typeof(TMessageApplier).PrettyPrint()}'");
+            
         }
 
-        public bool Apply(
-            TAggregate aggregate,
-            IAggregateEvent<TAggregate, TIdentity> aggregateEvent)
-        {
-            var aggregateEventType = aggregateEvent.GetType();
-            Action<TMessageApplier, IAggregateEvent> applier;
-
-            if (!ApplyMethods.TryGetValue(aggregateEventType, out applier))
-            {
-                return false;
-            }
-
-            applier((TMessageApplier)(object)this, aggregateEvent);
-            return true;
-        }
-        
-        public bool Hydrate(
-            TAggregate aggregate,
-            IAggregateSnapshot<TAggregate, TIdentity> aggregateSnapshot)
-        {
-            var aggregateEventType = aggregateSnapshot.GetType();
-            Action<TMessageApplier, IAggregateSnapshot> hydrater;
-
-            if (!HydrateMethods.TryGetValue(aggregateEventType, out hydrater))
-            {
-                return false;
-            }
-
-            hydrater((TMessageApplier)(object)this, aggregateSnapshot);
-            return true;
-        }
     }
 }

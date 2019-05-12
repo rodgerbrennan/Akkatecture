@@ -1,10 +1,36 @@
+// The MIT License (MIT)
+//
+// Copyright (c) 2018 - 2019 Lutando Ngqakaza
+// https://github.com/Lutando/Akkatecture 
+// 
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy of
+// this software and associated documentation files (the "Software"), to deal in
+// the Software without restriction, including without limitation the rights to
+// use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+// the Software, and to permit persons to whom the Software is furnished to do so,
+// subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+// FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+// COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+// IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+// CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 using System;
 using System.ComponentModel;
 using System.Linq;
 using Akkatecture.Aggregates;
+using Akkatecture.Commands;
 using Akkatecture.Core;
 using Akkatecture.Extensions;
 using Akkatecture.TestHelpers.Aggregates;
+using Akkatecture.TestHelpers.Aggregates.Commands;
+using Akkatecture.TestHelpers.Aggregates.Entities;
 using Akkatecture.TestHelpers.Aggregates.Events;
 using Akkatecture.TestHelpers.Aggregates.Events.Upcasters;
 using FluentAssertions;
@@ -18,9 +44,9 @@ namespace Akkatecture.Tests.UnitTests.Mapping
 
         [Fact]
         [Category(Category)]
-        public void CommittedEvent_Tagged_ContainsTaggedElements()
+        public void CommittedEvent_WithUpgradableEvent_GetsUpgrades()
         {
-            var aggregateEventTagger = new TestAggregateEventUpcaster();
+            var aggregateEventUpcaster = new TestAggregateEventUpcaster();
             var aggregateSequenceNumber = 3;
             var aggregateId = TestAggregateId.New;
             var aggregateEvent = new TestCreatedEvent(aggregateId);
@@ -44,18 +70,51 @@ namespace Akkatecture.Tests.UnitTests.Mapping
                     now,
                     aggregateSequenceNumber);
 
-            var eventSequence = aggregateEventTagger.FromJournal(committedEvent, string.Empty);
+            var eventSequence = aggregateEventUpcaster.FromJournal(committedEvent, string.Empty);
             var upcastedEvent = eventSequence.Events.Single();
 
-            if (upcastedEvent is ICommittedEvent<TestAggregate, TestAggregateId, TestCreatedEventV2> e)
-            {
-                e.AggregateEvent.GetType().Should().Be<TestCreatedEventV2>();
-            }
-            else
-            {
-                false.Should().BeTrue();
-            }
+            upcastedEvent
+                .As<ICommittedEvent<TestAggregate, TestAggregateId, TestCreatedEventV2>>()
+                .AggregateEvent.Name
+                .Should().Be("default upcasted string");
 
         }
+        
+        [Fact]
+        [Category(Category)]
+        public void Upcasting_UnsupportedEvent_ThrowsException()
+        {
+            var aggregateEventUpcaster = new TestAggregateEventUpcaster();
+            var aggregateEvent = new TestAddedEvent(Test.New);
+            
+            this.Invoking(test => aggregateEventUpcaster.Upcast(aggregateEvent))
+                .Should().Throw<ArgumentException>();
+
+        }
+        
+        [Fact]
+        [Category(Category)]
+        public void Instantiating_UnInstantiableUpcaster_ThrowsException()
+        {
+            this.Invoking(test => new UnInstantiableAggregateEventUpcaster())
+                .Should().Throw<InvalidOperationException>();
+
+        }
+        
+        [Fact]
+        [Category(Category)]
+        public void NonCommittedEvent_WhenRead_IsReturnedUnchanged()
+        {
+            var message = new CreateTestCommand(TestAggregateId.New,CommandId.New);
+            var eventUpcaster = new TestAggregateEventUpcaster();
+
+            var unchanged = eventUpcaster.FromJournal(message, string.Empty);
+
+            unchanged.Events.Single().As<CreateTestCommand>().GetSourceId().Should().Be(message.GetSourceId());
+            unchanged.Events.Single().As<CreateTestCommand>().AggregateId.Should().Be(message.AggregateId);
+        }
+        
+        
+
     }
 }

@@ -33,18 +33,9 @@ namespace Akkatecture.Aggregates
     public interface IAggregateRoot
     {
         IAggregateName Name { get; }
-        
         long Version { get; }
-        
-        bool IsNew { get; }
-        int? SnapshotVersion { get; }
-        
+        bool IsNew { get; }      
         bool HasSourceId(ISourceId sourceId);
-
-        void ApplyEvents(IEnumerable<IAggregateEvent> aggregateEvents);
-
-        void ApplyEvents(IReadOnlyCollection<IDomainEvent> domainEvents);
-
         IIdentity GetIdentity();
     }
 

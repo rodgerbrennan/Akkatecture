@@ -34,7 +34,7 @@ using Akkatecture.Sagas.AggregateSaga;
 
 namespace Akkatecture.Clustering.Core
 {
-    public class ClusterFactory<TAggregateManager,TAggregate,TIdentity>
+    public static class ClusterFactory<TAggregateManager,TAggregate,TIdentity>
         where TAggregateManager : ActorBase, IAggregateManager<TAggregate, TIdentity>
         where TAggregate : IAggregateRoot<TIdentity>
         where TIdentity : IIdentity
@@ -72,7 +72,7 @@ namespace Akkatecture.Clustering.Core
 
             var shardRef = clusterSharding.Start(
                 typeof(TAggregateManager).Name,
-                Props.Create<TAggregateManager>(aggregateManagerFactory),
+                Props.Create(aggregateManagerFactory),
                 clusterShardingSettings,
                 ShardIdentityExtractors
                     .AggregateIdentityExtractor<TAggregate, TIdentity>,
@@ -104,7 +104,7 @@ namespace Akkatecture.Clustering.Core
         
     }
 
-    public class ClusterFactory<TAggregateSagaManager, TAggregateSaga, TIdentity, TSagaLocator>
+    public static class ClusterFactory<TAggregateSagaManager, TAggregateSaga, TIdentity, TSagaLocator>
         where TAggregateSagaManager : ActorBase, IAggregateSagaManager<TAggregateSaga, TIdentity, TSagaLocator>
         where TAggregateSaga : IAggregateSaga<TIdentity>
         where TIdentity : SagaId<TIdentity>
@@ -147,10 +147,6 @@ namespace Akkatecture.Clustering.Core
             string clusterRoleName,
             int numberOfShards = 12)
         {
-            if (typeof(TAggregateSagaManager) != typeof(AggregateSagaManager<,,>))
-            {
-                throw new ArgumentException($"{typeof(TAggregateSagaManager).PrettyPrint()} is not a {typeof(AggregateSagaManager<,,>).PrettyPrint()}");
-            }
             var clusterSharding = ClusterSharding.Get(actorSystem);
 
             var shardResolver = new ShardResolvers(numberOfShards);
@@ -165,9 +161,5 @@ namespace Akkatecture.Clustering.Core
 
             return shardRef;
         }
-
     }
-
-
-
 }
